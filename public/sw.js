@@ -1,4 +1,4 @@
-const CATCH_STATIC_NAME = "static-v5";
+const CATCH_STATIC_NAME = "static-v7";
 const CATCH_DYNAMIC_NAME = "dynamic-v2";
 const STATIC_FILES = [
   "/",
@@ -30,43 +30,121 @@ self.addEventListener("install", function(event) {
 self.addEventListener("activate", function(event) {
   // console.log("[Service Worker] Activating Service Worker ...", event);
   event.waitUntil(
-    caches.keys()
-    .then((keysList) => {
-      return Promise.all(keysList.map(key => {
-        if(key !== CATCH_STATIC_NAME && key !==CATCH_DYNAMIC_NAME) {
-          console.log("[Service Worker] Removing the old Cache.", key);
-          return caches.delete(key);
-        }
-      }));
+    caches.keys().then(keysList => {
+      return Promise.all(
+        keysList.map(key => {
+          if (key !== CATCH_STATIC_NAME && key !== CATCH_DYNAMIC_NAME) {
+            console.log("[Service Worker] Removing the old Cache.", key);
+            return caches.delete(key);
+          }
+        })
+      );
     })
   );
   return self.clients.claim();
 });
 
+// Cache with Network fallback ( Cache first Network next )
 self.addEventListener("fetch", function(event) {
   // console.log("[Service Worker] Fetching Some Data ...", event);
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      if (response) {
-        return response;
-      } else {
-        return fetch(event.request)
-          .then(res => {
-            return caches.open(CATCH_DYNAMIC_NAME).then(cache => {
-              // this condition is to avoid chrome-extension error on console
-              if (event.request.url.indexOf("https") === 0) {
-                cache.put(event.request.url, res.clone());
-              }
-              return res;
-            });
-          })
-          .catch(err => {
-            return caches.open(CATCH_STATIC_NAME)
-            .then(cache => {
-              return cache.match("/offline.html");
+  const url = "https://httpbin.org/get";
+  if (event.request.url.indexOf(url) > -1) {
+    event.respondWith(
+      caches.open(CATCH_DYNAMIC_NAME).then(cache => {
+        return fetch(event.request).then(res => {
+          cache.put(event.request.url, res.clone());
+          return res;
+        });
+      })
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then(response => {
+        if (response) {
+          return response;
+        } else {
+          return fetch(event.request)
+            .then(res => {
+              return caches.open(CATCH_DYNAMIC_NAME).then(cache => {
+                // this condition is to avoid chrome-extension error on console
+                if (event.request.url.indexOf("https") === 0) {
+                  cache.put(event.request.url, res.clone());
+                }
+                return res;
+              });
             })
-          });
-      }
-    })
-  );
+            .catch(err => {
+              return caches.open(CATCH_STATIC_NAME).then(cache => {
+                return cache.match("/offline.html");
+              });
+            });
+        }
+      })
+    );
+  }
 });
+
+// Initial Setup
+// self.addEventListener("fetch", function(event) {
+//   // console.log("[Service Worker] Fetching Some Data ...", event);
+//   event.respondWith(
+//     caches.match(event.request).then(response => {
+//       if (response) {
+//         return response;
+//       } else {
+//         return fetch(event.request)
+//           .then(res => {
+//             return caches.open(CATCH_DYNAMIC_NAME).then(cache => {
+//               // this condition is to avoid chrome-extension error on console
+//               if (event.request.url.indexOf("https") === 0) {
+//                 cache.put(event.request.url, res.clone());
+//               }
+//               return res;
+//             });
+//           })
+//           .catch(err => {
+//             return caches.open(CATCH_STATIC_NAME)
+//             .then(cache => {
+//               return cache.match("/offline.html");
+//             })
+//           });
+//       }
+//     })
+//   );
+// });
+
+// Network with cache fallback ( Network first Cache next )
+// self.addEventListener("fetch", function(event) {
+//   // console.log("[Service Worker] Fetching Some Data ...", event);
+//   event.respondWith(
+//     fetch(event.request)
+//       .then(res => {
+//         return caches.open(CATCH_DYNAMIC_NAME).then(cache => {
+//           // this condition is to avoid chrome-extension error on console
+//           if (event.request.url.indexOf("http") === 0) {
+//             cache.put(event.request.url, res.clone());
+//           }
+//           return res;
+//         });
+//       })
+//       .catch(err => {
+//         return caches.match(event.request);
+//       })
+//   );
+// });
+
+// Cache-Only
+// self.addEventListener("fetch", function(event) {
+//   // console.log("[Service Worker] Fetching Some Data ...", event);
+//   event.respondWith(
+//     caches.match(event.request)
+//   );
+// });
+
+// Network-Only
+// self.addEventListener("fetch", function(event) {
+//   // console.log("[Service Worker] Fetching Some Data ...", event);
+//   event.respondWith(
+//     fetch(event.request)
+//   );
+// });
