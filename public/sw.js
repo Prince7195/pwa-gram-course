@@ -1,5 +1,5 @@
-const CATCH_STATIC_NAME = "static-v7";
-const CATCH_DYNAMIC_NAME = "dynamic-v2";
+const CATCH_STATIC_NAME = "static-v8";
+const CATCH_DYNAMIC_NAME = "dynamic-v3";
 const STATIC_FILES = [
   "/",
   "/index.html",
@@ -16,6 +16,16 @@ const STATIC_FILES = [
   "https://fonts.googleapis.com/icon?family=Material+Icons",
   "https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css"
 ];
+
+function trimCache(cacheName, maxItems) {
+  caches.open(cacheName).then(cache => {
+    return cache.keys().then(keys => {
+      if (keys.length > maxItems) {
+        cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
+      }
+    });
+  });
+}
 
 self.addEventListener("install", function(event) {
   // console.log("[Service Worker] Installing Service Worker ...", event);
@@ -44,6 +54,15 @@ self.addEventListener("activate", function(event) {
   return self.clients.claim();
 });
 
+function isInArray(str, array) {
+  for (let i = 0; i < array.length; i++) {
+    if (array[i] === str) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Cache with Network fallback ( Cache first Network next )
 self.addEventListener("fetch", function(event) {
   // console.log("[Service Worker] Fetching Some Data ...", event);
@@ -52,11 +71,15 @@ self.addEventListener("fetch", function(event) {
     event.respondWith(
       caches.open(CATCH_DYNAMIC_NAME).then(cache => {
         return fetch(event.request).then(res => {
+          // trimCache(CATCH_DYNAMIC_NAME, 3);
           cache.put(event.request.url, res.clone());
           return res;
         });
       })
     );
+  } else if (isInArray(event.request.url, STATIC_FILES)) {
+    // Cache-Only
+    event.respondWith(caches.match(event.request));
   } else {
     event.respondWith(
       caches.match(event.request).then(response => {
@@ -66,6 +89,7 @@ self.addEventListener("fetch", function(event) {
           return fetch(event.request)
             .then(res => {
               return caches.open(CATCH_DYNAMIC_NAME).then(cache => {
+                // trimCache(CATCH_DYNAMIC_NAME, 3);
                 // this condition is to avoid chrome-extension error on console
                 if (event.request.url.indexOf("https") === 0) {
                   cache.put(event.request.url, res.clone());
@@ -75,7 +99,9 @@ self.addEventListener("fetch", function(event) {
             })
             .catch(err => {
               return caches.open(CATCH_STATIC_NAME).then(cache => {
-                return cache.match("/offline.html");
+                if (event.request.headers.get("accept").includes("text/html")) {
+                  return cache.match("/offline.html");
+                }
               });
             });
         }

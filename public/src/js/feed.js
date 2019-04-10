@@ -22,6 +22,16 @@ function openCreatePostModal() {
   }
 }
 
+function unRegisterServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let i = 0; i < registrations.length; i++) {
+        registrations[i].unregister();
+      }
+    });
+  }
+}
+
 function closeCreatePostModal() {
   createPostArea.style.display = "none";
 }
@@ -75,10 +85,19 @@ function createCard() {
   sharedMomentsArea.appendChild(cardWrapper);
 }
 
-const url = "https://httpbin.org/get";
+const url = "https://httpbin.org/post";
 let networkDataReceived = false;
 
-fetch(url)
+fetch(url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json"
+  },
+  body: JSON.stringify({
+    message: "Hello, Welcome"
+  })
+})
   .then(function(res) {
     return res.json();
   })
