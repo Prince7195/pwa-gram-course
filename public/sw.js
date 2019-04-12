@@ -1,5 +1,5 @@
-const CATCH_STATIC_NAME = "static-v8";
-const CATCH_DYNAMIC_NAME = "dynamic-v3";
+const CATCH_STATIC_NAME = "static-v9";
+const CATCH_DYNAMIC_NAME = "dynamic-v4";
 const STATIC_FILES = [
   "/",
   "/index.html",
@@ -66,7 +66,7 @@ function isInArray(str, array) {
 // Cache with Network fallback ( Cache first Network next )
 self.addEventListener("fetch", function(event) {
   // console.log("[Service Worker] Fetching Some Data ...", event);
-  const url = "https://httpbin.org/get";
+  const url = "https://fb-storage-app.firebaseio.com/posts";
   if (event.request.url.indexOf(url) > -1) {
     event.respondWith(
       caches.open(CATCH_DYNAMIC_NAME).then(cache => {
