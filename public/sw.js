@@ -1,4 +1,7 @@
-const CATCH_STATIC_NAME = "static-v9";
+importScripts("/src/js/idb.js");
+importScripts("/src/js/utility.js");
+
+const CATCH_STATIC_NAME = "static-v11";
 const CATCH_DYNAMIC_NAME = "dynamic-v4";
 const STATIC_FILES = [
   "/",
@@ -6,6 +9,8 @@ const STATIC_FILES = [
   "/offline.html",
   "/src/js/app.js",
   "/src/js/feed.js",
+  "/src/js/idb.js",
+  "/src/js/utility.js",
   "/src/js/fetch.js",
   "/src/js/promise.js",
   "/src/js/material.min.js",
@@ -69,12 +74,18 @@ self.addEventListener("fetch", function(event) {
   const url = "https://fb-storage-app.firebaseio.com/posts";
   if (event.request.url.indexOf(url) > -1) {
     event.respondWith(
-      caches.open(CATCH_DYNAMIC_NAME).then(cache => {
-        return fetch(event.request).then(res => {
-          // trimCache(CATCH_DYNAMIC_NAME, 3);
-          cache.put(event.request.url, res.clone());
-          return res;
+      fetch(event.request).then(res => {
+        const clonedRes = res.clone();
+        clearAllData("posts")
+        .then(() => {
+          return clonedRes.json();
+        })
+        .then((data) => {
+          for (const key in data) {
+            writeData("posts", data[key]);
+          }
         });
+        return res;
       })
     );
   } else if (isInArray(event.request.url, STATIC_FILES)) {

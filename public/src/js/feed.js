@@ -109,21 +109,14 @@ fetch(url)
     updateUI(dataArray);
   });
 
-if ("caches" in window) {
-  caches
-    .match(url)
-    .then(function(res) {
-      return res.json();
-    })
-    .then(function(data) {
-      console.log("From Cache", data);
+if ("indexedDB" in window) {
+  readAllData("posts")
+  .then(
+    data => {
       if (!networkDataReceived) {
-        const dataArray = [];
-        for (const key in data) {
-          dataArray.push(data[key]);
-        }
-        clearCards();
-        updateUI(dataArray);
+        console.log("Form Indexed DB: ", data);
+        updateUI(data);
       }
-    });
+    }
+  );
 }
