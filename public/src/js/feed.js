@@ -6,45 +6,50 @@ var closeCreatePostModalButton = document.querySelector(
 var sharedMomentsArea = document.querySelector("#shared-moments");
 
 function openCreatePostModal() {
-  createPostArea.style.display = "block";
+  // createPostArea.style.display = 'block';
+  // setTimeout(function() {
+  createPostArea.style.transform = "translateY(0)";
+  // }, 1);
   if (deferredPrompt) {
     deferredPrompt.prompt();
+
     deferredPrompt.userChoice.then(function(choiceResult) {
       console.log(choiceResult.outcome);
 
       if (choiceResult.outcome === "dismissed") {
         console.log("User cancelled installation");
       } else {
-        console.log("User added to Home screen");
+        console.log("User added to home screen");
       }
     });
+
     deferredPrompt = null;
   }
-}
 
-function unRegisterServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let i = 0; i < registrations.length; i++) {
-        registrations[i].unregister();
-      }
-    });
-  }
+  // if ('serviceWorker' in navigator) {
+  //   navigator.serviceWorker.getRegistrations()
+  //     .then(function(registrations) {
+  //       for (var i = 0; i < registrations.length; i++) {
+  //         registrations[i].unregister();
+  //       }
+  //     })
+  // }
 }
 
 function closeCreatePostModal() {
-  createPostArea.style.display = "none";
+  createPostArea.style.transform = "translateY(100vh)";
+  // createPostArea.style.display = 'none';
 }
 
 shareImageButton.addEventListener("click", openCreatePostModal);
 
 closeCreatePostModalButton.addEventListener("click", closeCreatePostModal);
 
-// Currently not in use
-function onSaveBtnClicked(event) {
-  console.log("Save button Clicked");
+// Currently not in use, allows to save assets in cache on demand otherwise
+function onSaveButtonClicked(event) {
+  console.log("clicked");
   if ("caches" in window) {
-    caches.open("user-request").then(cache => {
+    caches.open("user-requested").then(function(cache) {
       cache.add("https://httpbin.org/get");
       cache.add("/src/images/sf-boat.jpg");
     });
@@ -64,10 +69,8 @@ function createCard(data) {
   cardTitle.className = "mdl-card__title";
   cardTitle.style.backgroundImage = "url(" + data.image + ")";
   cardTitle.style.backgroundSize = "cover";
-  cardTitle.style.height = "180px";
   cardWrapper.appendChild(cardTitle);
   var cardTitleTextElement = document.createElement("h2");
-  cardTitleTextElement.style.color = "white";
   cardTitleTextElement.style.color = "white";
   cardTitleTextElement.className = "mdl-card__title-text";
   cardTitleTextElement.textContent = data.title;
@@ -78,7 +81,7 @@ function createCard(data) {
   cardSupportingText.style.textAlign = "center";
   // var cardSaveButton = document.createElement('button');
   // cardSaveButton.textContent = 'Save';
-  // cardSaveButton.addEventListener('click', onSaveBtnClicked);
+  // cardSaveButton.addEventListener('click', onSaveButtonClicked);
   // cardSupportingText.appendChild(cardSaveButton);
   cardWrapper.appendChild(cardSupportingText);
   componentHandler.upgradeElement(cardWrapper);
@@ -86,13 +89,14 @@ function createCard(data) {
 }
 
 function updateUI(data) {
-  for (let i = 0; i < data.length; i++) {
+  clearCards();
+  for (var i = 0; i < data.length; i++) {
     createCard(data[i]);
   }
 }
 
-const url = "https://fb-storage-app.firebaseio.com/posts.json";
-let networkDataReceived = false;
+var url = "https://fb-storage-app.firebaseio.com/posts.json";
+var networkDataReceived = false;
 
 fetch(url)
   .then(function(res) {
@@ -100,23 +104,19 @@ fetch(url)
   })
   .then(function(data) {
     networkDataReceived = true;
-    console.log("From API", data);
-    const dataArray = [];
-    for (const key in data) {
+    console.log("From web", data);
+    var dataArray = [];
+    for (var key in data) {
       dataArray.push(data[key]);
     }
-    clearCards();
     updateUI(dataArray);
   });
 
 if ("indexedDB" in window) {
-  readAllData("posts")
-  .then(
-    data => {
-      if (!networkDataReceived) {
-        console.log("Form Indexed DB: ", data);
-        updateUI(data);
-      }
+  readAllData("posts").then(function(data) {
+    if (!networkDataReceived) {
+      console.log("From cache", data);
+      updateUI(data);
     }
-  );
+  });
 }
